@@ -52,9 +52,3 @@ See `baseline.ipynb` file.
 * **Implementation**: [models/refinenet.py](models/refinenet.py)
 
 ---
-
-## Baseline Origin
-
-* Github: [kdha0727/cancer-instance-segmentation-from-tissue]()
-
-All non-necessary codes are modularized as package. Watch all codes in github repository.
