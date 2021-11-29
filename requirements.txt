@@ -1,0 +1,9 @@
+numpy~=1.18.5
+torch
+torchvision~=0.9.1
+albumentations
+monai
+torchinfo
+tqdm
+matplotlib
+seaborn
