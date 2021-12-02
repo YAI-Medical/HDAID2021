@@ -16,7 +16,7 @@ class ImageList(Dataset):
 
     def __init__(
             self, samples,
-            transform=None, target_transform=None,
+            transform=None, target_transform=None, num_classes=2,
             loader=pil_gray_loader, target_loader=numpy_loader
     ):
         self.samples = samples
@@ -24,6 +24,7 @@ class ImageList(Dataset):
         self.target_transform = target_transform
         self.loader = loader
         self.target_loader = target_loader
+        self.num_classes = num_classes
 
     @classmethod
     def from_path(
@@ -47,10 +48,21 @@ class ImageList(Dataset):
             sample = self.transform(sample)
         if self.target_transform is not None:
             target = self.target_transform(target)
+        target = self.get_one_hot_encoded_target(target)
         return sample, target
 
     def __len__(self):
         return len(self.samples)
+
+    def get_one_hot_encoded_target(self, target_img):
+        target = target_img.squeeze()
+        one_hot_target = np.zeros((self.num_classes, target.size(0), target.size(1)))
+
+        # the target not correctly normalize.
+        one_hot_target[0, :, :] = np.where(target == 0, 1, 0)
+        one_hot_target[1, :, :] = np.where(target > 0, 1, 0)
+
+        return one_hot_target
 
 
 def make_dataset(

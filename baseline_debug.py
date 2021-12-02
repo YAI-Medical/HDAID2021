@@ -25,11 +25,18 @@ from utils.lr_scheduler import CosineAnnealingWarmUpRestarts
 import uuid
 from utils.training import train_one_epoch
 
+from utils.evaluation import all_together, draw_confusion_matrix
+
 device = torch.device('cuda')
 root: str = "../echocardiography/"
 
+num_classes = 2
+num_channel = 1
+
 transform = transforms.Compose([transforms.ToTensor(),
-                                transforms.Resize((256, 256))])
+                                transforms.Resize((256, 256),
+                                interpolation=transforms.InterpolationMode.NEAREST),
+                                ])
 
 train_a2c = os.path.join(root, 'train', 'A2C')
 train_a2c = ImageList.from_path(train_a2c, transform=transform, target_transform=transform)
@@ -50,10 +57,10 @@ val_datasets = ConcatDataset([val_a2c, val_a4c])
 
 # # Pretrained Model
 net = deeplabv3_resnet101(pretrained=True, progress=False)
-net.backbone.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-net.classifier = DeepLabHead(2048, 1)
+net.backbone.conv1 = nn.Conv2d(num_channel, 64, kernel_size=7, stride=2, padding=3, bias=False)
+net.classifier = DeepLabHead(2048, num_classes)
 # net.aux_classifier = nn.Sequential()
-net.aux_classifier = FCNHead(1024, 1)
+net.aux_classifier = FCNHead(1024, num_classes)
 
 # # Non-pretrained Model
 # net = deeplabv3_resnet101(pretrained=False, num_classes=6)
@@ -68,7 +75,7 @@ if torch.cuda.device_count() > 1:
     net = torch.nn.DataParallel(net)
     net.to(device)
 
-print(torchinfo.summary(net, (1, 1, 256, 256)))
+print(torchinfo.summary(net, (1, num_channel, 256, 256)))
 
 # Lazy-eval iterable dataset: do not set sampler or shuffle options
 num_epoch = 1
@@ -118,15 +125,9 @@ for ep in range(num_epoch):
     if ep == num_epoch - 1:
         torch.save(state_dict(), os.path.join(checkpoint_dir, '{}.pt').format(ep))
 
-from utils.evaluation import all_together, draw_confusion_matrix
-
 label_names = [
     "Left Ventricle",
     "Background"
 ]
 
 _, _, _, _, cm = all_together(net, val_loader, device=device, verbose=True)
-draw_confusion_matrix(
-    cm[:5, :5], label_names, label_names,
-    figsize=(10, 8), title="Left Ventricle Division"
-)

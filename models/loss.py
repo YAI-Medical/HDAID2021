@@ -40,13 +40,13 @@ class BCEDiceIoUWithLogitsLoss2d(BCEDiceIoULoss2d):
     # can NOT be used in training, however it can be used in prediction.
     # see https://github.com/fastai/fastai/blob/master/fastai/metrics.py#L53
     def forward(self, logit, target):
-        bce_input = torch.sigmoid(logit)
+        bce_input = logit.softmax(dim=-3)
         bce = F.binary_cross_entropy(bce_input, target, weight=self.weight, reduction=self.reduction) * \
             self.bce_factor
         if self.training:
             probability = bce_input
         else:
-            probability = torch.round(bce_input)
+            probability = f.one_hot_nd(logit.argmax(dim=-3), logit.size(dim=-3), nd=2).to(logit.dtype)
         mul, add = probability * target, probability + target
         dice = f._dice_loss(mul, add, nd=2, reduction=self.reduction) * self.dice_factor  # noqa
         iou = f._iou_loss(mul, add, nd=2, reduction=self.reduction) * self.iou_factor  # noqa
