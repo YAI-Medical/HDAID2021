@@ -2,6 +2,7 @@ from torch.nn.modules.loss import _Loss, _WeightedLoss  # noqa
 from torch.nn import BCELoss
 from torch.nn import functional as F  # noqa
 from . import functional as f  # use as small case to be separated with torch.nn.functional
+import torch
 
 
 class DiceLoss2d(_Loss):
@@ -39,13 +40,13 @@ class BCEDiceIoUWithLogitsLoss2d(BCEDiceIoULoss2d):
     # can NOT be used in training, however it can be used in prediction.
     # see https://github.com/fastai/fastai/blob/master/fastai/metrics.py#L53
     def forward(self, logit, target):
-        bce_input = logit.softmax(dim=-3)
+        bce_input = torch.sigmoid(logit)
         bce = F.binary_cross_entropy(bce_input, target, weight=self.weight, reduction=self.reduction) * \
             self.bce_factor
         if self.training:
             probability = bce_input
         else:
-            probability = f.one_hot_nd(logit.argmax(dim=-3).long(), logit.size(dim=-3), nd=2).to(logit.dtype)
+            probability = torch.round(bce_input)
         mul, add = probability * target, probability + target
         dice = f._dice_loss(mul, add, nd=2, reduction=self.reduction) * self.dice_factor  # noqa
         iou = f._iou_loss(mul, add, nd=2, reduction=self.reduction) * self.iou_factor  # noqa

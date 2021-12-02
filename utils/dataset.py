@@ -29,7 +29,7 @@ class ImageList(Dataset):
     def from_path(
             cls,
             directory: "[str, os.PathLike]",
-            image_extension: str = '.jpg',
+            image_extension: str = '.png',
             target_extension: str = '.npy',
             **kwargs: ...,
     ):
@@ -55,7 +55,7 @@ class ImageList(Dataset):
 
 def make_dataset(
         directory: "[str, os.PathLike]",
-        image_extension: str = '.jpg',
+        image_extension: str = '.png',
         target_extension: str = '.npy',
 ):
     """Generates a list of samples of a form (path_to_sample, class).
