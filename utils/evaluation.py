@@ -137,14 +137,14 @@ def all_together(model, dataset, device=None, verbose=True):
         true = true.clamp(0., 1.).to(device).float()
         pred = model(x)
         pred = pred["out"]
-        bce += F.binary_cross_entropy(torch.sigmoid(pred), true, reduction='mean').item() * size
-        # why the true label has argmax before? (target already have an answer)
-        true_argmax = torch.round(true).long()
-        pred_argmax = torch.round(pred).long()
+        # print out the result of heart
+        bce += F.binary_cross_entropy(pred.softmax(dim=-3), true, reduction='mean').item() * size
+        true_argmax = true.argmax(dim=-3).long()
+        pred_argmax = pred.argmax(dim=-3).long()
         logits.append(pred_argmax.view(-1))
         targets.append(true_argmax.view(-1))
         correct += torch.eq(pred_argmax, true_argmax).float().mean().item() * size
-        pred = pred_argmax.to(pred.dtype)
+        pred = f.one_hot_nd(pred_argmax, pred.size(dim=-3), nd=2).to(pred.dtype)
         mul, add = pred * true, pred + true
         dice += f._dice_loss(mul, add, nd=2, reduction='mean').item() * size
         iou += f._iou_loss(mul, add, nd=2, reduction='mean').item() * size
