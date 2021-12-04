@@ -2,7 +2,18 @@ import torch
 from tqdm.notebook import tqdm
 
 
-def train_one_epoch(model, criterion, optimizer, scheduler, train_loader, val_loader, device, epoch, warmup_start=True):
+def train_one_epoch(
+        model,
+        criterion,
+        optimizer,
+        scheduler,
+        train_loader,
+        val_loader,
+        device,
+        epoch,
+        warmup_start=True,
+        aux_weight=0.3,
+):
     model.train()
 
     if epoch == 0 and warmup_start:  # warm_up_scheduler
@@ -25,12 +36,12 @@ def train_one_epoch(model, criterion, optimizer, scheduler, train_loader, val_lo
         masks = masks.clamp(0., 1.).to(device).float()  # IMPORTANT: clamp
 
         prediction = model(images)
-        out_pred = prediction["out"]
-        aux_pred = prediction["aux"]
-        # prediction = prediction.softmax(dim=-3)
-        out_loss = criterion(out_pred, masks)
-        aux_loss = criterion(aux_pred, masks)
-        loss = out_loss + 0.3 * aux_loss
+        if isinstance(prediction, dict):
+            loss = criterion(prediction['out'], masks)
+            if aux_weight is not None and aux_weight > 0 and 'aux' in prediction:
+                loss += 0.3 * criterion(prediction['aux'], masks)
+        else:
+            loss = criterion(prediction, masks)
         loss.backward()
 
         if torch.cuda.device_count() > 1:
@@ -68,7 +79,9 @@ def train_one_epoch(model, criterion, optimizer, scheduler, train_loader, val_lo
                 # prediction = torch.zeros_like(prediction).scatter(
                 #     dim=-3, index=prediction.unsqueeze(dim=-3).long(), src=torch.ones_like(prediction))
                 # prediction = prediction.softmax(dim=-3)
-                loss_f += criterion(prediction["out"], masks).item()
+                if isinstance(prediction, dict):
+                    prediction = prediction['out']
+                loss_f += criterion(prediction, masks).item()
                 count += 1
             loss_f = loss_f / count if count else None
             inner_tq.set_postfix(loss=loss_f)

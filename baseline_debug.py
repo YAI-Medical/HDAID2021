@@ -30,7 +30,7 @@ from utils.evaluation import all_together, draw_confusion_matrix
 device = torch.device('cuda')
 root: str = "../echocardiography/"
 
-num_classes = 2
+num_classes = 1
 num_channel = 1
 
 transform = transforms.Compose([transforms.ToTensor(),
@@ -83,7 +83,7 @@ num_epoch = 1
 batch_size = 35
 num_workers = 1
 
-loss_function = BCEDiceIoUWithLogitsLoss2d()
+loss_function = BCEDiceIoULoss2d()
 optimizer_class = torch.optim.Adam
 optimizer_config = {'lr': 1e-6}
 scheduler_class = CosineAnnealingWarmUpRestarts
