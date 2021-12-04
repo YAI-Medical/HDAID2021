@@ -60,12 +60,16 @@ def iou_loss_nd(output, target, nd, reduction=_default_reduction):
 
 
 def convert_by_one_hot_nd(tensor, nd):
+    import warnings
+    warnings.warn("In this project, multilabel conversion is not recommended.")
     index = tensor.argmax(dim=-nd - 1).long()
     return torch.zeros_like(tensor).scatter(
         dim=-nd - 1, index=index.unsqueeze(dim=-nd - 1), src=torch.ones_like(tensor)).to(tensor.dtype)
 
 
 def one_hot_nd(tensor, n_classes, nd):  # N H W
+    import warnings
+    warnings.warn("In this project, multilabel conversion is not recommended.")
     new_shape = list(range(tensor.ndim))
     new_shape.insert(-nd, tensor.ndim)
     return _F.one_hot(tensor.long(), n_classes).permute(new_shape)  # N C H W

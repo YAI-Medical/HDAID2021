@@ -3,40 +3,62 @@ from PIL import Image
 import numpy as np
 import os
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from typing import *
+    from torch import Tensor
+    PathType = Union[str, os.PathLike]
+    T = TypeVar('T')
 
-def pil_gray_loader(path):
+
+def pil_gray_loader(path: "PathType") -> "Image.Image":
     with open(path, 'rb') as fp:
         return Image.open(fp).convert('L')
 
 
-numpy_loader = np.load
+def numpy_loader(path: "PathType") -> "np.ndarray":
+    return np.load(path).astype(float)
 
 
 class ImageList(Dataset):
 
+    samples: "Sequence[Tuple[PathType, PathType]]"
+    transform: "Optional[Callable[[PathType], ...]]"
+    target_transform: "Optional[Callable[[PathType], ...]]"
+    loader: "Optional[Callable[[PathType], ...]]"
+    target_loader: "Optional[Callable[[PathType], ...]]"
+    num_classes: "Optional[int]"
+    one_hot: "bool"
+
     def __init__(
-            self, samples,
-            transform=None, target_transform=None, num_classes=2,
-            loader=pil_gray_loader, target_loader=numpy_loader
-    ):
+            self,
+            samples: "Sequence[Tuple[PathType, PathType]]",
+            transform: "Optional[Callable[..., ...]] " = None,
+            target_transform: "Optional[Callable[..., ...]]" = None,
+            loader: "Optional[Callable[[PathType], ...]]" = pil_gray_loader,
+            target_loader: "Optional[Callable[[PathType], ...]]" = numpy_loader,
+            num_classes: "Optional[int]" = 2,
+            one_hot: "bool" = False
+    ) -> None:
         self.samples = samples
         self.transform = transform
         self.target_transform = target_transform
         self.loader = loader
         self.target_loader = target_loader
         self.num_classes = num_classes
+        self.one_hot = one_hot
 
     @classmethod
     def from_path(
-            cls,
-            directory: "[str, os.PathLike]",
-            image_extension: str = '.png',
-            target_extension: str = '.npy',
+            cls: "Type[T]",
+            directory: "PathType",
+            image_extension: "str" = '.png',
+            target_extension: "str" = '.npy',
             **kwargs: ...,
-    ):
+    ) -> "T":
         return cls(make_dataset(directory, image_extension, target_extension), **kwargs)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: "Union[slice, int]") -> "Union[Subset, Tuple[Tensor, Tensor]]":
         if isinstance(index, slice):
             start, stop, step = index.indices(len(self))
             indices = range(start, stop, step)
@@ -48,28 +70,24 @@ class ImageList(Dataset):
             sample = self.transform(sample)
         if self.target_transform is not None:
             target = self.target_transform(target)
-        target = self.get_one_hot_encoded_target(target)
+        if self.one_hot:
+            target = self.get_one_hot_encoded_target(target)
         return sample, target
 
-    def __len__(self):
+    def __len__(self) -> "int":
         return len(self.samples)
 
-    def get_one_hot_encoded_target(self, target_img):
-        target = target_img.squeeze()
-        one_hot_target = np.zeros((self.num_classes, target.size(0), target.size(1)))
-
-        # the target not correctly normalize.
-        one_hot_target[0, :, :] = np.where(target == 0, 1, 0)
-        one_hot_target[1, :, :] = np.where(target > 0, 1, 0)
-
-        return one_hot_target
+    def get_one_hot_encoded_target(self, target_img: "Tensor") -> "Tensor":
+        assert isinstance(self.num_classes, int)
+        from models.functional import one_hot_nd
+        return one_hot_nd(target_img, self.num_classes, nd=2)
 
 
 def make_dataset(
         directory: "[str, os.PathLike]",
-        image_extension: str = '.png',
-        target_extension: str = '.npy',
-):
+        image_extension: "str" = '.png',
+        target_extension: "str" = '.npy',
+) -> "List[Tuple[PathType, PathType]]":
     """Generates a list of samples of a form (path_to_sample, class).
 
     Args:
@@ -94,7 +112,7 @@ def make_dataset(
     ])
     images = set()
     targets = set()
-    directory = os.path.expanduser(directory)
+    directory = os.path.expanduser(str(directory))
     filenames = sorted(os.listdir(directory))
     for filename in sorted(filenames):
         if filename.lower().endswith(image_extension):
@@ -107,5 +125,7 @@ def make_dataset(
         for fn in common
     ]
 
+
+del TYPE_CHECKING
 
 __all__ = ['ImageList', 'make_dataset']
