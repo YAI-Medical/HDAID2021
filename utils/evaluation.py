@@ -136,6 +136,8 @@ def all_together(model, dataset, device=None, verbose=True):
         x = x.to(device).float()
         true = true.clamp(0., 1.).to(device).float()
         pred = model(x)
+        pred = pred["out"]
+        # print out the result of heart
         bce += F.binary_cross_entropy(pred.softmax(dim=-3), true, reduction='mean').item() * size
         true_argmax = true.argmax(dim=-3).long()
         pred_argmax = pred.argmax(dim=-3).long()

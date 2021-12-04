@@ -2,6 +2,7 @@ from torch.nn.modules.loss import _Loss, _WeightedLoss  # noqa
 from torch.nn import BCELoss
 from torch.nn import functional as F  # noqa
 from . import functional as f  # use as small case to be separated with torch.nn.functional
+import torch
 
 
 class DiceLoss2d(_Loss):
@@ -45,7 +46,7 @@ class BCEDiceIoUWithLogitsLoss2d(BCEDiceIoULoss2d):
         if self.training:
             probability = bce_input
         else:
-            probability = f.one_hot_nd(logit.argmax(dim=-3).long(), logit.size(dim=-3), nd=2).to(logit.dtype)
+            probability = f.one_hot_nd(logit.argmax(dim=-3), logit.size(dim=-3), nd=2).to(logit.dtype)
         mul, add = probability * target, probability + target
         dice = f._dice_loss(mul, add, nd=2, reduction=self.reduction) * self.dice_factor  # noqa
         iou = f._iou_loss(mul, add, nd=2, reduction=self.reduction) * self.iou_factor  # noqa
